@@ -392,8 +392,6 @@ var FlipClock;
 	 
 	FlipClock.Face = FlipClock.Base.extend({
 		
-		// countdown: false,
-		
 		/**
 		 * An array of FlipClock.List objects
 		 */		
@@ -468,7 +466,7 @@ var FlipClock;
 			
 			var obj = new FlipClock.List(this.factory, digit, options);
 
-			this.factory.$wrapper.append(obj.$obj);	
+			//this.factory.$wrapper.append(obj.$obj);	
 			
 			return obj;
 		},
@@ -478,6 +476,32 @@ var FlipClock;
 		 */
 		 
 		reset: function() {},
+		
+		/**
+		 * Sets the clock time
+		 */
+		 
+		setTime: function(time) {
+			this.flip(time);		
+		},
+		
+		/**
+		 * Sets the clock time
+		 */
+		 
+		addDigit: function(digit) {
+			var obj = this.createList(digit, {
+				classes: {
+					active: this.factory.classes.active,
+					before: this.factory.classes.before,
+					flip: this.factory.classes.flip
+				}
+			});
+			
+			obj.$obj.insertBefore(this.factory.lists[0].$obj);
+							
+			this.factory.lists.unshift(obj);
+		},
 		
 		/**
 		 * Triggers when the clock is started
@@ -511,11 +535,23 @@ var FlipClock;
 				}
 			}
 			
-			$.each(time, function(i, digit) {
-				var list = t.factory.lists[i];				
-				var currentDigit = list.digit;
+			var offset = t.factory.lists.length - time.length;
 			
+			if(offset < 0) {
+				offset = 0;
+			}			
+			
+			var totalNew = 0;
+			var reFlip = false;
+			
+			$.each(time, function(i, digit) {
+				i += offset;
+				
+				var list = t.factory.lists[i];
+					
 				if(list) {
+					var currentDigit = list.digit;
+			
 					list.select(digit);
 					
 					if(digit != currentDigit && !doNotAddPlayClass) {
@@ -523,18 +559,16 @@ var FlipClock;
 					}
 				}	
 				else {
-					var obj = this.createList(digit, {
-						classes: {
-							active: t.factory.classes.active,
-							before: t.factory.classes.before,
-							flip: t.factory.classes.flip
-						}
-					});
-					
-					t.factory.lists.unshift(obj);
-					t.$wrapper.prepend(obj.$obj);
+					t.addDigit(digit);
+					reFlip = true;
 				}
 			});
+			
+			for(var x = 0; x < time.length; x++) {
+				if(x >= offset && t.factory.lists[x].digit != time[x]) {
+					t.factory.lists[x].select(time[x]);
+				}
+			}
 		}
 					
 	});
@@ -597,11 +631,13 @@ var FlipClock;
 		constructor: function(factory, digit, options) {
 			this.factory = factory;
 			this.digit   = digit;
-			this.$obj    = this._createList();
+			this.$obj    = this.createList();
 			
 			if(digit > 0) {
 				this.select(digit);
 			}
+			
+			this.factory.$wrapper.append(this.$obj);
 		},
 		
 		/**
@@ -611,7 +647,7 @@ var FlipClock;
 		 */
 		 
 		select: function(digit) {
-			if(!digit) {
+			if(typeof digit === "undefined") {
 				digit = this.digit;
 			}
 			else {
@@ -666,7 +702,7 @@ var FlipClock;
 		 * Create the list of digits and appends it to the DOM object 
 		 */
 		 
-		_createList: function() {
+		createList: function() {
 		
 			var html = $('<ul class="'+this.classes.flip+'" />');
 			
@@ -689,7 +725,7 @@ var FlipClock;
 				
 				html.append(item);
 			}
-			
+						
 			return html;
 		}
 	});
@@ -705,6 +741,12 @@ var FlipClock;
 	 */
 	 	
 	FlipClock.Time = FlipClock.Base.extend({
+		
+		/**
+		 * The time (in seconds)
+		 */		
+		 
+		minimumDigits: 0,
 		
 		/**
 		 * The time (in seconds)
@@ -796,6 +838,14 @@ var FlipClock;
 					data.push(value[x]);
 				}				
 			});
+			
+			if(data.length > this.minimumDigits) {
+				this.minimumDigits = data.length;
+			}
+			
+			if(this.minimumDigits > data.length) {
+				data.unshift('0');
+			}
 			
 			return data;
 		},
